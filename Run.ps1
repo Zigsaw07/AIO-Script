@@ -1,11 +1,5 @@
-# Check and set execution policy to RemoteSigned if necessary
-$executionPolicy = Get-ExecutionPolicy -Scope CurrentUser
-if ($executionPolicy -ne "RemoteSigned" -and $executionPolicy -ne "Unrestricted") {
-    Write-Host "Setting execution policy to RemoteSigned..."
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
-}
-
-# Ensure TLSv1.2 is enabled for compatibility with older clients
+$ErrorActionPreference = "Stop"
+# Enable TLSv1.2 for compatibility with older clients
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 # Define an array of download URLs
@@ -17,14 +11,11 @@ $DownloadURLs = @(
 
 # Loop through each URL
 foreach ($DownloadURL in $DownloadURLs) {
-    try {
-        $FileName = [System.IO.Path]::GetFileName($DownloadURL)
-        $FilePath = Join-Path $env:TEMP $FileName
+    $FilePath = "$env:TEMP\" + [System.IO.Path]::GetFileName($DownloadURL)
 
+    try {
         # Check if the file already exists
-        if (Test-Path $FilePath) {
-            Write-Host "File already exists ($FilePath). Skipping download."
-        } else {
+        if (-not (Test-Path $FilePath)) {
             # Download the file
             Write-Host "Downloading $DownloadURL..."
             Invoke-WebRequest -Uri $DownloadURL -OutFile $FilePath -UseBasicParsing
@@ -34,13 +25,16 @@ foreach ($DownloadURL in $DownloadURLs) {
                 throw "Download failed for $DownloadURL."
             }
             Write-Host "Download completed."
+        } else {
+            Write-Host "File already exists ($FilePath). Skipping download."
         }
 
         # Execute the downloaded file
         Write-Host "Executing $FilePath..."
         Start-Process -FilePath $FilePath -Wait
-        Write-Host "$FileName execution completed."
-    } catch {
-        Write-Error "Failed to process $($DownloadURL): $_"
+        Write-Host "$FilePath execution completed."
+    }
+    catch {
+        Write-Error "An error occurred: $_"
     }
 }
