@@ -1,50 +1,45 @@
+# Function to download and run executable with admin rights
 function DownloadAndRun-Executable {
     param (
         [string] $url
     )
 
     try {
-        # Create a temporary file path with the .exe extension
-        $tempFilePath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName() + ".exe")
-        
-        Write-Output "Downloading executable from $url to $tempFilePath"
-        
+        # Create a temporary file path
+        $tempFilePath = [System.IO.Path]::GetTempFileName()
+
         # Download the executable from the provided URL
-        iwr $url -OutFile $tempFilePath -ErrorAction Stop
-        
-        Write-Output "Download complete. Unblocking file."
+        Invoke-WebRequest -Uri $url -OutFile $tempFilePath -ErrorAction Stop
 
         # Unblock the downloaded file to prevent security warnings
         Unblock-File -Path $tempFilePath -ErrorAction Stop
 
-        Write-Output "Unblocked file. Running executable with admin privileges."
+        # Check if execution policy needs to be changed
+        $currentExecutionPolicy = Get-ExecutionPolicy -Scope Process
+        if ($currentExecutionPolicy -ne 'Bypass') {
+            Set-ExecutionPolicy -Scope Process Bypass -Force
+        }
 
         # Run the executable with administrator rights
-        $process = Start-Process -FilePath $tempFilePath -Verb RunAs -PassThru -Wait
-
-        # Log the exit code
-        Write-Output "Executable completed with exit code: $($process.ExitCode)"
+        Start-Process -FilePath $tempFilePath -Verb RunAs -Wait
 
         # Clean up: Delete the temporary file after execution
         Remove-Item -Path $tempFilePath -Force
-        
-        Write-Output "Temporary file deleted."
     }
     catch {
         Write-Error "Failed to download or run executable from $url. Error: $_"
     }
 }
 
+# Function to execute remote script
 function Execute-RemoteScript {
     param (
         [string] $url
     )
 
     try {
-        Write-Output "Executing remote script from $url"
-        
         # Fetch and execute the remote script
-        iwr $url | iex
+        irm $url | iex
     }
     catch {
         Write-Error "Failed to execute remote script from $url. Error: $_"
@@ -53,9 +48,9 @@ function Execute-RemoteScript {
 
 # URLs of the executables to download and run
 $urls = @(
-    'https://github.com/Zigsaw07/AIO-Script/raw/main/MSO-365.exe',
-    'https://github.com/Zigsaw07/AIO-Script/raw/main/Ninite.exe',
-    'https://github.com/Zigsaw07/AIO-Script/raw/main/RAR.exe'
+    'https://github.com/Zigsaw07/office2024/raw/main/MSO-365.exe',
+    'https://github.com/Zigsaw07/office2024/raw/main/Ninite.exe',
+    'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
 
 # URL of the remote script to execute
