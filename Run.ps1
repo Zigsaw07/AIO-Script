@@ -41,6 +41,6 @@ foreach ($DownloadURL in $DownloadURLs) {
         Start-Process -FilePath $FilePath -Wait
         Write-Host "$FileName execution completed."
     } catch {
-        Write-Error "Failed to process $DownloadURL: $_"
+        Write-Error "Failed to process $($DownloadURL): $_"
     }
 }
