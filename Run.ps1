@@ -1,50 +1,65 @@
-# Check and set execution policy to RemoteSigned if necessary
-$executionPolicy = Get-ExecutionPolicy -Scope CurrentUser
-if ($executionPolicy -ne "RemoteSigned" -and $executionPolicy -ne "Unrestricted") {
-    Write-Host "Setting execution policy to RemoteSigned..."
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
-}
+# Function to download and run executable with admin rights
+function DownloadAndRun-Executable {
+    param (
+        [string] $url
+    )
 
-# Ensure TLSv1.2 is enabled for compatibility with older clients
-[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-
-# Define an array of download URLs
-$DownloadURLs = @(
-    "https://github.com/Zigsaw07/office2024/raw/main/Setup1.exe",
-    "https://github.com/Zigsaw07/office2024/raw/main/Setup2.exe",
-    "https://github.com/Zigsaw07/office2024/raw/main/Setup3.exe"
-)
-
-# Loop through each URL
-foreach ($DownloadURL in $DownloadURLs) {
     try {
-        $FileName = [System.IO.Path]::GetFileName($DownloadURL)
-        $FilePath = Join-Path $env:TEMP $FileName
+        # Create a temporary file path
+        $tempFilePath = [System.IO.Path]::GetTempFileName()
 
-        # Check if the file already exists
-        if (Test-Path $FilePath) {
-            Write-Host "File already exists ($FilePath). Skipping download."
-        } else {
-            # Download the file
-            Write-Host "Downloading $DownloadURL..."
-            Invoke-WebRequest -Uri $DownloadURL -OutFile $FilePath -UseBasicParsing
+        # Download the executable from the provided URL
+        Invoke-WebRequest -Uri $url -OutFile $tempFilePath -ErrorAction Stop
 
-            # Check if download was successful
-            if (-not (Test-Path $FilePath)) {
-                throw "Download failed for $DownloadURL."
-            }
-            Write-Host "Download completed."
+        # Unblock the downloaded file to prevent security warnings
+        Unblock-File -Path $tempFilePath -ErrorAction Stop
+
+        # Check if execution policy needs to be changed
+        $currentExecutionPolicy = Get-ExecutionPolicy -Scope Process
+        if ($currentExecutionPolicy -ne 'Bypass') {
+            Set-ExecutionPolicy -Scope Process Bypass -Force
         }
 
-        # Execute the downloaded file (only if download was successful)
-        if (Test-Path $FilePath) {
-            Write-Host "Executing $FilePath..."
-            Start-Process -FilePath $FilePath -Wait
-            Write-Host "$FileName execution completed."
-        } else {
-            Write-Error "Skipping execution of $FileName because download failed."
-        }
-    } catch {
-        Write-Error "Failed to process $($DownloadURL): $_"
+        # Run the executable with administrator rights
+        Start-Process -FilePath $tempFilePath -Verb RunAs -Wait
+
+        # Clean up: Delete the temporary file after execution
+        Remove-Item -Path $tempFilePath -Force
+    }
+    catch {
+        Write-Error "Failed to download or run executable from $url. Error: $_"
     }
 }
+
+# Function to execute remote script
+function Execute-RemoteScript {
+    param (
+        [string] $url
+    )
+
+    try {
+        # Fetch and execute the remote script
+        irm $url | iex
+    }
+    catch {
+        Write-Error "Failed to execute remote script from $url. Error: $_"
+    }
+}
+
+# URLs of the executables to download and run
+$urls = @(
+    'https://github.com/Zigsaw07/office2024/raw/main/MSO-365.exe',
+    'https://github.com/Zigsaw07/office2024/raw/main/Ninite.exe',
+    'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
+)
+
+# URL of the remote script to execute
+$remoteScriptUrl = 'https://get.activated.win'
+
+# Loop through each URL and execute the download and run function
+foreach ($url in $urls) {
+    DownloadAndRun-Executable -url $url
+}
+
+# Execute the remote script
+Execute-RemoteScript -url $remoteScriptUrl
