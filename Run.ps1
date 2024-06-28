@@ -1,24 +1,17 @@
-# Function to download and run executable with admin rights
 function DownloadAndRun-Executable {
     param (
         [string] $url
     )
 
     try {
-        # Create a temporary file path
-        $tempFilePath = [System.IO.Path]::GetTempFileName()
+        # Create a temporary file path with the .exe extension
+        $tempFilePath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName() + ".exe")
 
         # Download the executable from the provided URL
-        Invoke-WebRequest -Uri $url -OutFile $tempFilePath -ErrorAction Stop
+        iwr $url -OutFile $tempFilePath -ErrorAction Stop
 
         # Unblock the downloaded file to prevent security warnings
         Unblock-File -Path $tempFilePath -ErrorAction Stop
-
-        # Check if execution policy needs to be changed
-        $currentExecutionPolicy = Get-ExecutionPolicy -Scope Process
-        if ($currentExecutionPolicy -ne 'Bypass') {
-            Set-ExecutionPolicy -Scope Process Bypass -Force
-        }
 
         # Run the executable with administrator rights
         Start-Process -FilePath $tempFilePath -Verb RunAs -Wait
@@ -31,7 +24,6 @@ function DownloadAndRun-Executable {
     }
 }
 
-# Function to execute remote script
 function Execute-RemoteScript {
     param (
         [string] $url
@@ -39,7 +31,7 @@ function Execute-RemoteScript {
 
     try {
         # Fetch and execute the remote script
-        irm $url | iex
+        iwr $url | iex
     }
     catch {
         Write-Error "Failed to execute remote script from $url. Error: $_"
