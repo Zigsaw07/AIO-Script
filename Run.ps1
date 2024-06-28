@@ -10,7 +10,7 @@ function DownloadAndRun-Executable {
         Write-Output "Downloading executable from $url to $tempFilePath"
         
         # Download the executable from the provided URL
-        Invoke-WebRequest -Uri $url -OutFile $tempFilePath -ErrorAction Stop
+        iwr $url -OutFile $tempFilePath -ErrorAction Stop
         
         Write-Output "Download complete. Unblocking file."
 
@@ -44,23 +44,11 @@ function Execute-RemoteScript {
         Write-Output "Executing remote script from $url"
         
         # Fetch and execute the remote script
-        Invoke-WebRequest -Uri $url | Invoke-Expression
+        iwr $url | iex
     }
     catch {
         Write-Error "Failed to execute remote script from $url. Error: $_"
     }
-}
-
-# Function to check if the script is running with admin privileges
-function Test-Admin {
-    $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    return $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-# Check for admin privileges
-if (-not (Test-Admin)) {
-    Write-Error "This script requires running with administrator privileges."
-    exit
 }
 
 # URLs of the executables to download and run
@@ -73,23 +61,10 @@ $urls = @(
 # URL of the remote script to execute
 $remoteScriptUrl = 'https://get.activated.win'
 
-# Loop through each URL and start a job to execute the download and run function
-$jobs = @()
+# Loop through each URL and execute the download and run function
 foreach ($url in $urls) {
-    $jobs += Start-Job -ScriptBlock {
-        param ($url)
-        DownloadAndRun-Executable -url $url
-    } -ArgumentList $url
-}
-
-# Wait for all jobs to complete
-$jobs | ForEach-Object { 
-    Write-Output "Waiting for job ID $($_.Id) to complete..."
-    Receive-Job -Job $_ -Wait 
+    DownloadAndRun-Executable -url $url
 }
 
 # Execute the remote script
 Execute-RemoteScript -url $remoteScriptUrl
-
-# Clean up completed jobs
-$jobs | ForEach-Object { Remove-Job -Job $_ }
