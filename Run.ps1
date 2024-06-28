@@ -1,5 +1,11 @@
-$ErrorActionPreference = "Stop"
-# Enable TLSv1.2 for compatibility with older clients
+# Check and set execution policy to RemoteSigned if necessary
+$executionPolicy = Get-ExecutionPolicy -Scope CurrentUser
+if ($executionPolicy -ne "RemoteSigned" -and $executionPolicy -ne "Unrestricted") {
+    Write-Host "Setting execution policy to RemoteSigned..."
+    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+}
+
+# Ensure TLSv1.2 is enabled for compatibility with older clients
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 # Define an array of download URLs
@@ -11,11 +17,14 @@ $DownloadURLs = @(
 
 # Loop through each URL
 foreach ($DownloadURL in $DownloadURLs) {
-    $FilePath = "$env:TEMP\" + [System.IO.Path]::GetFileName($DownloadURL)
-
     try {
+        $FileName = [System.IO.Path]::GetFileName($DownloadURL)
+        $FilePath = Join-Path $env:TEMP $FileName
+
         # Check if the file already exists
-        if (-not (Test-Path $FilePath)) {
+        if (Test-Path $FilePath) {
+            Write-Host "File already exists ($FilePath). Skipping download."
+        } else {
             # Download the file
             Write-Host "Downloading $DownloadURL..."
             Invoke-WebRequest -Uri $DownloadURL -OutFile $FilePath -UseBasicParsing
@@ -25,16 +34,17 @@ foreach ($DownloadURL in $DownloadURLs) {
                 throw "Download failed for $DownloadURL."
             }
             Write-Host "Download completed."
-        } else {
-            Write-Host "File already exists ($FilePath). Skipping download."
         }
 
-        # Execute the downloaded file
-        Write-Host "Executing $FilePath..."
-        Start-Process -FilePath $FilePath -Wait
-        Write-Host "$FilePath execution completed."
-    }
-    catch {
-        Write-Error "An error occurred: $_"
+        # Execute the downloaded file (only if download was successful)
+        if (Test-Path $FilePath) {
+            Write-Host "Executing $FilePath..."
+            Start-Process -FilePath $FilePath -Wait
+            Write-Host "$FileName execution completed."
+        } else {
+            Write-Error "Skipping execution of $FileName because download failed."
+        }
+    } catch {
+        Write-Error "Failed to process $($DownloadURL): $_"
     }
 }
