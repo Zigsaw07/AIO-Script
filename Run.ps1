@@ -1,70 +1,101 @@
-function DownloadAndRun-Executable {
+# Function to handle errors
+function Handle-Error {
     param (
-        [string] $url
+        [string]$errorMessage
+    )
+    Write-Host "Error: $errorMessage"
+    # Additional error handling logic can go here
+    exit 1
+}
+
+# Function to extract file IDs from Google Drive folder link
+function Get-GoogleDriveFileIdsFromLink {
+    param (
+        [string]$FolderLink
     )
 
     try {
-        # Create a temporary file path with the .exe extension
-        $tempFilePath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName() + ".exe")
-        
-        Write-Output "Downloading executable from $url to $tempFilePath"
-        
-        # Download the executable from the provided URL
-        iwr $url -OutFile $tempFilePath -ErrorAction Stop
-        
-        Write-Output "Download complete. Unblocking file."
+        # Use web scraping to extract file IDs from the folder link
+        $webRequest = Invoke-WebRequest -Uri $FolderLink -ErrorAction Stop
+        $html = $webRequest.Content
 
-        # Unblock the downloaded file to prevent security warnings
-        Unblock-File -Path $tempFilePath -ErrorAction Stop
+        # Example regex to extract file IDs from the HTML content
+        $fileIds = [regex]::Matches($html, 'https://drive.google.com/uc\?id=([a-zA-Z0-9_-]+)') | ForEach-Object { $_.Groups[1].Value }
 
-        Write-Output "Unblocked file. Running executable with admin privileges."
+        if ($fileIds.Count -eq 0) {
+            Handle-Error -errorMessage "No file IDs found in the folder link."
+        }
 
-        # Run the executable with administrator rights
-        $process = Start-Process -FilePath $tempFilePath -Verb RunAs -PassThru -Wait
-
-        # Log the exit code
-        Write-Output "Executable completed with exit code: $($process.ExitCode)"
-
-        # Clean up: Delete the temporary file after execution
-        Remove-Item -Path $tempFilePath -Force
-        
-        Write-Output "Temporary file deleted."
+        return $fileIds
     }
     catch {
-        Write-Error "Failed to download or run executable from $url. Error: $_"
+        Handle-Error -errorMessage "Failed to extract file IDs: $_"
     }
 }
 
-function Execute-RemoteScript {
+# Function to download files from Google Drive using file IDs
+function Download-GoogleDriveFiles {
     param (
-        [string] $url
+        [string]$FolderLink,
+        [string]$DestinationFolder
     )
 
     try {
-        Write-Output "Executing remote script from $url"
-        
-        # Fetch and execute the remote script
-        iwr $url | iex
+        # Get file IDs from the Google Drive folder link
+        $fileIds = Get-GoogleDriveFileIdsFromLink -FolderLink $FolderLink
+
+        # Create a destination folder if it doesn't exist
+        if (-not (Test-Path -Path $DestinationFolder)) {
+            New-Item -ItemType Directory -Path $DestinationFolder | Out-Null
+        }
+
+        # Download each file based on its ID
+        foreach ($fileId in $fileIds) {
+            $url = "https://drive.google.com/drive/folders/1jAftNXs2Yv7ZvcdcmO8DiwRIxNh1igQw?usp=drive_link"
+            $outputPath = Join-Path -Path $DestinationFolder -ChildPath "file_$fileId.ext"  # Modify the output path as needed
+
+            Invoke-WebRequest -Uri $url -OutFile $outputPath -ErrorAction Stop
+            Write-Host "File with ID $fileId downloaded to $outputPath"
+        }
     }
     catch {
-        Write-Error "Failed to execute remote script from $url. Error: $_"
+        Handle-Error -errorMessage "Failed to download files: $_"
     }
 }
 
-# URLs of the executables to download and run
-$urls = @(
-    'https://github.com/Zigsaw07/office2024/raw/main/MSO-365.exe',
-    'https://github.com/Zigsaw07/office2024/raw/main/Ninite.exe',
-    'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
-)
+# Function to download and execute autoplay.exe from a folder
+function DownloadAndExecuteAutoplay {
+    param (
+        [string]$FolderLink
+    )
 
-# URL of the remote script to execute
-$remoteScriptUrl = 'https://get.activated.win'
+    try {
+        # Define a temporary folder path
+        $tempFolder = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
+        
+        # Download files from Google Drive folder to temporary folder
+        Download-GoogleDriveFiles -FolderLink $FolderLink -DestinationFolder $tempFolder
 
-# Loop through each URL and execute the download and run function
-foreach ($url in $urls) {
-    DownloadAndRun-Executable -url $url
+        # Find and execute autoplay.exe within the downloaded folder
+        $autoplayPath = Get-ChildItem -Path $tempFolder -Filter "autoplay.exe" -Recurse | Select-Object -ExpandProperty FullName -First 1
+
+        if (-not $autoplayPath) {
+            Handle-Error -errorMessage "autoplay.exe not found in the downloaded folder."
+        }
+
+        # Run autoplay.exe with admin privileges
+        Start-Process -FilePath $autoplayPath -Verb RunAs -Wait
+    }
+    catch {
+        Handle-Error -errorMessage "Failed to download and execute autoplay.exe: $_"
+    }
 }
 
-# Execute the remote script
-Execute-RemoteScript -url $remoteScriptUrl
+# Main script execution
+try {
+    $folderLink = "https://drive.google.com/drive/folders/your_folder_id"  # Replace with your Google Drive folder link
+    DownloadAndExecuteAutoplay -FolderLink $folderLink
+}
+catch {
+    Handle-Error -errorMessage "Main script execution failed: $_"
+}
