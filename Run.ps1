@@ -11,7 +11,6 @@ function DownloadAndRun-Executable {
         
         # Download the executable from the provided URL
         iwr $url -OutFile $tempFilePath -ErrorAction Stop
-        
         Write-Output "Download complete. Unblocking file."
 
         # Unblock the downloaded file to prevent security warnings
@@ -27,7 +26,6 @@ function DownloadAndRun-Executable {
 
         # Clean up: Delete the temporary file after execution
         Remove-Item -Path $tempFilePath -Force
-        
         Write-Output "Temporary file deleted."
     }
     catch {
@@ -41,10 +39,11 @@ function Execute-RemoteScript {
     )
 
     try {
-        Write-Output "Executing remote script from $url"
+        Write-Output "Executing remote script from $url using irm"
         
-        # Fetch and execute the remote script
-        iwr $url | iex
+        # Fetch and execute the remote script using irm (Invoke-RestMethod)
+        irm $url | iex
+        Write-Output "Remote script executed successfully."
     }
     catch {
         Write-Error "Failed to execute remote script from $url. Error: $_"
