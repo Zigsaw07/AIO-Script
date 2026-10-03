@@ -1,246 +1,76 @@
-# ============================================================
-# Windows 10 / Windows 11 Application Installer
-#
-# Checks for WinGet.
-# If WinGet is missing, attempts to install Microsoft App
-# Installer, which provides WinGet.
-# ============================================================
+#Requires -Version 5.1
 
-$ErrorActionPreference = "Continue"
-
-$Apps = @(
-    "Google.Chrome",
-    "RARLab.WinRAR",
-    "7zip.7zip",
-    "DucFabulous.UltraViewer",
-    "VideoLan.VLC"
-)
-
-# ------------------------------------------------------------
-# Helper: Check whether WinGet exists
-# ------------------------------------------------------------
-
-function Test-WinGet {
-    $Winget = Get-Command "winget.exe" -ErrorAction SilentlyContinue
-
-    if ($Winget) {
-        return $true
-    }
-
-    return $false
-}
-
-# ------------------------------------------------------------
-# Header
-# ------------------------------------------------------------
-
-Clear-Host
-
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host " Windows Application Installer" -ForegroundColor Cyan
-Write-Host " Windows 10 / Windows 11" -ForegroundColor Cyan
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
-
-$OS = Get-CimInstance Win32_OperatingSystem
-
-Write-Host "Operating System: $($OS.Caption)"
-Write-Host "Version:          $($OS.Version)"
-Write-Host ""
-
-# ------------------------------------------------------------
-# Check WinGet
-# ------------------------------------------------------------
+$ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 Write-Host "Checking for WinGet..." -ForegroundColor Cyan
 
-if (Test-WinGet) {
+# Check whether WinGet is already installed
+$winget = Get-Command winget.exe -ErrorAction SilentlyContinue
 
-    Write-Host "WinGet is already installed." -ForegroundColor Green
+if (-not $winget) {
+    Write-Host "WinGet not found. Installing WinGet PowerShell module..." -ForegroundColor Yellow
 
-}
-else {
+    try {
+        # Install NuGet provider
+        Install-PackageProvider -Name NuGet -Force | Out-Null
 
-    Write-Host "WinGet was not found." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Attempting to install Microsoft App Installer..." -ForegroundColor Cyan
-    Write-Host ""
+        # Install Microsoft WinGet client module
+        Install-Module `
+            -Name Microsoft.WinGet.Client `
+            -Force `
+            -Repository PSGallery `
+            -AllowClobber | Out-Null
 
-    # --------------------------------------------------------
-    # Method 1: Microsoft Store / Winget package registration
-    # --------------------------------------------------------
+        Write-Host "Using Repair-WinGetPackageManager to bootstrap WinGet..." -ForegroundColor Yellow
 
-    $AppInstaller = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller" `
-        -ErrorAction SilentlyContinue
+        Repair-WinGetPackageManager -AllUsers
 
-    if ($AppInstaller) {
-
-        Write-Host "Microsoft App Installer is installed." -ForegroundColor Yellow
-        Write-Host "Attempting to register it..." -ForegroundColor Cyan
-
-        try {
-
-            Add-AppxPackage -Register `
-                "$($AppInstaller.InstallLocation)\AppxManifest.xml" `
-                -DisableDevelopmentMode `
-                -ErrorAction Stop
-
-        }
-        catch {
-
-            Write-Host "Could not register App Installer." -ForegroundColor Yellow
-        }
+        Write-Host "WinGet bootstrap completed." -ForegroundColor Green
     }
-
-    # --------------------------------------------------------
-    # Method 2: Install App Installer through Microsoft Store
-    # --------------------------------------------------------
-
-    if (-not (Test-WinGet)) {
-
-        Write-Host ""
-        Write-Host "Opening Microsoft Store App Installer page..." -ForegroundColor Cyan
-
-        try {
-
-            Start-Process `
-                "ms-windows-store://pdp/?productid=9NBLGGH4NNS1"
-
-            Write-Host ""
-            Write-Host "Please install/update 'App Installer' from the Microsoft Store." `
-                -ForegroundColor Yellow
-
-            Write-Host ""
-            Read-Host "Press Enter after App Installer has finished installing"
-
-        }
-        catch {
-
-            Write-Host "Could not open Microsoft Store." -ForegroundColor Red
-        }
-    }
-
-    # --------------------------------------------------------
-    # Check again
-    # --------------------------------------------------------
-
-    Write-Host ""
-    Write-Host "Checking for WinGet again..." -ForegroundColor Cyan
-
-    # Refresh PATH for the current PowerShell session
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") +
-                ";" +
-                [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-    Start-Sleep -Seconds 2
-
-    if (-not (Test-WinGet)) {
-
-        Write-Host ""
-        Write-Host "ERROR: WinGet is still not available." -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Install/update Microsoft App Installer and run this script again."
-        Write-Host ""
-
+    catch {
+        Write-Host "Failed to install/repair WinGet: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
     }
 
-    Write-Host "WinGet is now available." -ForegroundColor Green
-}
+    # Refresh PATH / locate WinGet again
+    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
 
-# ------------------------------------------------------------
-# Display WinGet version
-# ------------------------------------------------------------
-
-Write-Host ""
-
-try {
-
-    $WingetVersion = winget --version
-
-    Write-Host "WinGet version: $WingetVersion" -ForegroundColor Green
-
-}
-catch {
-
-    Write-Host "Unable to determine WinGet version." -ForegroundColor Yellow
-}
-
-Write-Host ""
-
-# ------------------------------------------------------------
-# Update WinGet sources
-# ------------------------------------------------------------
-
-Write-Host "Updating WinGet sources..." -ForegroundColor Cyan
-
-winget source update
-
-Write-Host ""
-
-# ------------------------------------------------------------
-# Install applications
-# ------------------------------------------------------------
-
-$Failed = @()
-
-foreach ($App in $Apps) {
-
-    Write-Host "============================================" -ForegroundColor DarkGray
-    Write-Host "Installing: $App" -ForegroundColor Cyan
-    Write-Host "============================================" -ForegroundColor DarkGray
-
-    winget install `
-        --id $App `
-        --exact `
-        --silent `
-        --accept-package-agreements `
-        --accept-source-agreements
-
-    if ($LASTEXITCODE -eq 0) {
-
-        Write-Host "SUCCESS: $App" -ForegroundColor Green
-
+    if (-not $winget) {
+        Write-Host "WinGet is still unavailable. Restart PowerShell and run this script again." -ForegroundColor Red
+        exit 1
     }
-    else {
+}
 
-        Write-Host "FAILED: $App" -ForegroundColor Red
-        Write-Host "Exit code: $LASTEXITCODE" -ForegroundColor Red
+Write-Host "WinGet found: $($winget.Source)" -ForegroundColor Green
 
-        $Failed += $App
+# Applications to install
+$apps = @(
+    "Google.Chrome",
+    "VideoLAN.VLC",
+    "DucFabulous.UltraViewer",
+    "RARLab.WinRAR",
+    "7zip.7zip"
+)
+
+foreach ($app in $apps) {
+    Write-Host "`nInstalling $app ..." -ForegroundColor Cyan
+
+    try {
+        & winget install --id=$app -e --silent `
+            --accept-source-agreements `
+            --accept-package-agreements
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "$app installed successfully." -ForegroundColor Green
+        }
+        else {
+            Write-Host "$app returned exit code $LASTEXITCODE." -ForegroundColor Yellow
+        }
     }
-
-    Write-Host ""
-}
-
-# ------------------------------------------------------------
-# Summary
-# ------------------------------------------------------------
-
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host " Installation Summary" -ForegroundColor Cyan
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
-
-if ($Failed.Count -eq 0) {
-
-    Write-Host "All applications installed successfully." -ForegroundColor Green
-
-}
-else {
-
-    Write-Host "Some applications failed to install:" -ForegroundColor Yellow
-    Write-Host ""
-
-    foreach ($App in $Failed) {
-        Write-Host "  - $App" -ForegroundColor Red
+    catch {
+        Write-Host "Failed to install $app : $($_.Exception.Message)" -ForegroundColor Red
     }
-
-    Write-Host ""
-    Write-Host "Run the script again to retry the failed applications." `
-        -ForegroundColor Yellow
 }
 
-Write-Host ""
-Read-Host "Press Enter to exit"
+Write-Host "`nInstallation process completed." -ForegroundColor Green
