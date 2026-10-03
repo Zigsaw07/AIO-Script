@@ -59,7 +59,7 @@ $urls = @(
 
     $commands = @(
     'irm https://get.activated.win | iex',
-    'irm https://github.com/Zigsaw07/SETSKY/raw/refs/heads/main/GARRY.ps1 | iex'
+    'irm https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
 )
 
 foreach ($command in $commands) {
