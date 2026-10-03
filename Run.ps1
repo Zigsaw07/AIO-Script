@@ -67,7 +67,5 @@ foreach ($command in $commands) {
     Invoke-Expression $command
 }
 
-}
-
 # Execute the remote script
 Execute-RemoteScript -url $remoteScriptUrl
