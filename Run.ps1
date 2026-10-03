@@ -53,16 +53,16 @@ function Execute-RemoteScript {
 # URLs of the executables to download and run
 $urls = @(
     'https://github.com/Zigsaw07/office2024/raw/main/MSO-365.exe',
+    'https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/AIOSOFT.exe',
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
-    $commands = @(
-    'irm https://get.activated.win | iex',
-    'irm https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
-)
 
-foreach ($command in $commands) {
-    Write-Host "Running: $command" -ForegroundColor Cyan
-    Invoke-Expression $command
+# URL of the remote script to execute
+$remoteScriptUrl = 'https://get.activated.win'
+
+# Loop through each URL and execute the download and run function
+foreach ($url in $urls) {
+    DownloadAndRun-Executable -url $url
 }
 
 # Execute the remote script
