@@ -56,7 +56,7 @@ $urls = @(
     'https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/ZIG.exe',
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
-
+}
     $commands = @(
     'irm https://get.activated.win | iex',
     'irm https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
