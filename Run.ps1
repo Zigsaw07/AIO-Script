@@ -53,7 +53,7 @@ function Execute-RemoteScript {
 # URLs of the executables to download and run
 $urls = @(
     'https://github.com/Zigsaw07/office2024/raw/main/MSO-365.exe',
-    'https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/AIOSOFT.exe',
+    'https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/ZIG.exe',
     'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'
 )
 
