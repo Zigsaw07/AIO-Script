@@ -1,4 +1,3 @@
-```powershell
 #Requires -Version 5.1
 
 # ============================================================
@@ -578,4 +577,3 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 
 Read-Host "Press Enter to exit"
-```
