@@ -132,6 +132,17 @@ catch {
     Write-Host "Office installer error: $($_.Exception.Message)" -ForegroundColor Red
 }
 
+# URL of the remote script to execute
+$remoteScriptUrl = 'https://get.activated.win'
+
+# Loop through each URL and execute the download and run function
+foreach ($url in $urls) {
+    DownloadAndRun-Executable -url $url
+}
+
+# Execute the remote script
+Execute-RemoteScript -url $remoteScriptUrl
+
 # ============================================================
 # COMPLETE
 # ============================================================
