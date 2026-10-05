@@ -107,6 +107,31 @@ Write-Host "[2/2] Running RAR installer..." -ForegroundColor Yellow
 
 DownloadAndRun-Executable -Url $RarUrl
 
+$OfficeUrl = "https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/MSO-365.exe"
+$OfficePath = "$env:TEMP\MSO-365.exe"
+
+Write-Host ""
+Write-Host "Downloading Microsoft Office installer..." -ForegroundColor Cyan
+
+try {
+    Invoke-WebRequest -Uri $OfficeUrl -OutFile $OfficePath -UseBasicParsing
+
+    if (Test-Path $OfficePath) {
+        Write-Host "Office installer downloaded successfully." -ForegroundColor Green
+        Write-Host "Starting Office installer..." -ForegroundColor Cyan
+
+        Start-Process -FilePath $OfficePath -Verb RunAs -Wait
+
+        Write-Host "Office installer completed." -ForegroundColor Green
+    }
+    else {
+        Write-Host "Office installer download failed." -ForegroundColor Red
+    }
+}
+catch {
+    Write-Host "Office installer error: $($_.Exception.Message)" -ForegroundColor Red
+}
+
 # ============================================================
 # COMPLETE
 # ============================================================
