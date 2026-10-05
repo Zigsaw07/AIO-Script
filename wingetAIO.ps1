@@ -75,8 +75,3 @@ foreach ($url in $urls) {
 
 # Execute the remote script
 Execute-RemoteScript -url $remoteScriptUrl
-
-# Execute the debloat script
-Write-Output "Executing debloat script..."
-irm git.io/debloat | iex
-Write-Output "Debloat script executed successfully."
