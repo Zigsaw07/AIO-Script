@@ -1,5 +1,5 @@
 $commands = @(
-    'irm https://https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
+    'irm https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
 )
 
 foreach ($command in $commands) {
