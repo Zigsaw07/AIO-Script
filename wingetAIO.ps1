@@ -1,77 +1,119 @@
-$commands = @(
-    'irm https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1 | iex'
-)
+```powershell
+#Requires -Version 5.1
 
-foreach ($command in $commands) {
-    Write-Host "Running: $command" -ForegroundColor Cyan
-    Invoke-Expression $command
+$ErrorActionPreference = "Continue"
+$ProgressPreference = "SilentlyContinue"
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "        AIO WINDOWS SETUP" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# ============================================================
+# 1. INSTALL / BOOTSTRAP WINGET
+# ============================================================
+
+$WingetScriptUrl = "https://github.com/Zigsaw07/AIO-Script/raw/refs/heads/main/winget.ps1"
+
+Write-Host "[1/2] Installing / checking WinGet..." -ForegroundColor Yellow
+Write-Host "URL: $WingetScriptUrl" -ForegroundColor DarkGray
+
+try {
+    $WingetScript = Invoke-RestMethod -Uri $WingetScriptUrl -ErrorAction Stop
+
+    if ([string]::IsNullOrWhiteSpace($WingetScript)) {
+        throw "Downloaded WinGet script is empty."
+    }
+
+    Write-Host "WinGet script downloaded successfully." -ForegroundColor Green
+    Write-Host "Executing WinGet bootstrapper..." -ForegroundColor Cyan
+
+    Invoke-Expression $WingetScript
+
+    Write-Host "WinGet bootstrapper finished." -ForegroundColor Green
 }
+catch {
+    Write-Host "Failed to download or execute WinGet script." -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Yellow
+}
+
+# ============================================================
+# 2. DOWNLOAD AND RUN RAR.EXE
+# ============================================================
 
 function DownloadAndRun-Executable {
     param (
-        [string] $url
+        [Parameter(Mandatory = $true)]
+        [string]$Url
     )
 
-    try {
-        # Create a temporary file path with the .exe extension
-        $tempFilePath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName() + ".exe")
-        
-        Write-Output "Downloading executable from $url to $tempFilePath"
-        
-        # Download the executable from the provided URL
-        iwr $url -OutFile $tempFilePath -ErrorAction Stop
-        Write-Output "Download complete. Unblocking file."
-
-        # Unblock the downloaded file to prevent security warnings
-        Unblock-File -Path $tempFilePath -ErrorAction Stop
-
-        Write-Output "Unblocked file. Running executable with admin privileges."
-
-        # Run the executable with administrator rights
-        $process = Start-Process -FilePath $tempFilePath -Verb RunAs -PassThru -Wait
-
-        # Log the exit code
-        Write-Output "Executable completed with exit code: $($process.ExitCode)"
-
-        # Clean up: Delete the temporary file after execution
-        Remove-Item -Path $tempFilePath -Force
-        Write-Output "Temporary file deleted."
-    }
-    catch {
-        Write-Error "Failed to download or run executable from $url. Error: $_"
-    }
-}
-
-function Execute-RemoteScript {
-    param (
-        [string] $url
-    )
+    $TempFilePath = $null
 
     try {
-        Write-Output "Executing remote script from $url using irm"
-        
-        # Fetch and execute the remote script using irm (Invoke-RestMethod)
-        irm $url | iex
-        Write-Output "Remote script executed successfully."
+        $TempFilePath = Join-Path `
+            ([System.IO.Path]::GetTempPath()) `
+            ([System.IO.Path]::GetRandomFileName() + ".exe")
+
+        Write-Host ""
+        Write-Host "Downloading:" -ForegroundColor Cyan
+        Write-Host $Url -ForegroundColor DarkGray
+        Write-Host "Destination: $TempFilePath" -ForegroundColor DarkGray
+
+        Invoke-WebRequest `
+            -Uri $Url `
+            -OutFile $TempFilePath `
+            -UseBasicParsing `
+            -ErrorAction Stop
+
+        Write-Host "Download complete." -ForegroundColor Green
+
+        try {
+            Unblock-File -Path $TempFilePath -ErrorAction SilentlyContinue
+        }
+        catch {
+            # Ignore if Unblock-File is unavailable/not required
+        }
+
+        Write-Host "Starting executable with Administrator privileges..." -ForegroundColor Cyan
+
+        $Process = Start-Process `
+            -FilePath $TempFilePath `
+            -Verb RunAs `
+            -Wait `
+            -PassThru
+
+        Write-Host ""
+        Write-Host "Process finished." -ForegroundColor Green
+        Write-Host "Exit Code: $($Process.ExitCode)" -ForegroundColor Cyan
     }
     catch {
-        Write-Error "Failed to execute remote script from $url. Error: $_"
+        Write-Host ""
+        Write-Host "Failed to download or run executable." -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+    }
+    finally {
+        if ($TempFilePath -and (Test-Path $TempFilePath)) {
+            Remove-Item $TempFilePath -Force -ErrorAction SilentlyContinue
+            Write-Host "Temporary file removed." -ForegroundColor DarkGray
+        }
     }
 }
 
-# URLs of the executables to download and run
-$urls = @(
-    
-    'https://github.com/Zigsaw07/office2024/raw/main/RAR.exe'    
-)
+$RarUrl = "https://github.com/Zigsaw07/office2024/raw/main/RAR.exe"
 
-# URL of the remote script to execute
-$remoteScriptUrl = 'https://get.activated.win'
+Write-Host ""
+Write-Host "[2/2] Running RAR installer..." -ForegroundColor Yellow
 
-# Loop through each URL and execute the download and run function
-foreach ($url in $urls) {
-    DownloadAndRun-Executable -url $url
-}
+DownloadAndRun-Executable -Url $RarUrl
 
-# Execute the remote script
-Execute-RemoteScript -url $remoteScriptUrl
+# ============================================================
+# COMPLETE
+# ============================================================
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "          AIO SETUP COMPLETED" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
+```
